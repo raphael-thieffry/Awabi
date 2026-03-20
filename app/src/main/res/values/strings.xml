@@ -1,0 +1,26 @@
+<resources>
+    <string name="app_name">LinguaBubble</string>
+    <string name="app_subtitle">Apprentissage du japonais</string>
+
+    <!-- AccessibilityService -->
+    <string name="accessibility_service_label">LinguaBubble</string>
+    <string name="accessibility_service_description">Permet à LinguaBubble de lire le contenu de l\'écran pour extraire et analyser le vocabulaire japonais.</string>
+
+    <!-- Permissions -->
+    <string name="permission_overlay_title">Affichage par-dessus les autres apps</string>
+    <string name="permission_overlay_description">Requis pour afficher la bulle flottante</string>
+    <string name="permission_accessibility_title">Service d\'accessibilité</string>
+    <string name="permission_accessibility_description">Requis pour lire le texte des vues Android</string>
+
+    <!-- Boutons -->
+    <string name="btn_grant">Accorder</string>
+    <string name="btn_launch_bubble">Lancer la bulle</string>
+    <string name="btn_stop_bubble">Arrêter la bulle</string>
+
+    <!-- Bulle -->
+    <string name="bubble_description">Bulle LinguaBubble</string>
+
+    <!-- Panneau Sprint 1 -->
+    <string name="panel_sprint1_placeholder">Squelette Sprint 1 — bulle active ✓</string>
+    <string name="panel_sprint1_next">Sprint 2 : OCR + détection des mots japonais</string>
+</resources>

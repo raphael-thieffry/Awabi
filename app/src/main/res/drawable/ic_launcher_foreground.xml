@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Bulle de conversation centrée dans la zone safe (72dp centré sur 108dp = offset 18dp) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M72,30H36C31.6,30 28,33.6 28,38v36l8,-8h36c4.4,0 8,-3.6 8,-8V38C80,33.6 76.4,30 72,30z
+                          M44,52H40V48h4v4z M56,52H52V48h4v4z M68,52H64V48h4v4z" />
+</vector>

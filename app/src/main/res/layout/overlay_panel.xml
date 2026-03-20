@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Panneau horizontal semi-transparent affiché quand l'utilisateur tape sur la bulle.
+    Fond semi-transparent pour laisser lire le texte d'origine derrière.
+    Les mots défilent horizontalement.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="#CC000000"
+    android:orientation="vertical"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp">
+
+    <!-- Spinner de chargement (visible pendant l'analyse) -->
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:visibility="gone" />
+
+    <!-- Liste horizontale des mots -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvWords"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:clipToPadding="false"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:visibility="gone" />
+
+    <!-- Affiché quand aucun mot n'est détecté -->
+    <TextView
+        android:id="@+id/tvEmpty"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:text="Aucun mot japonais détecté"
+        android:textColor="#AAFFFFFF"
+        android:textSize="12sp"
+        android:visibility="gone" />
+
+    <!-- Bouton debug — visible uniquement si BuildConfig.DEBUG (géré en code) -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnDebug"
+        style="@style/Widget.MaterialComponents.Button.TextButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:text="🐛 Debug"
+        android:textColor="#AAFFFFFF"
+        android:textSize="10sp"
+        android:visibility="gone" />
+
+    <!-- Vue de debug : texte brut, tokens, réponses Jisho -->
+    <ScrollView
+        android:id="@+id/scrollDebug"
+        android:layout_width="match_parent"
+        android:layout_height="180dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/tvDebug"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#111111"
+            android:fontFamily="monospace"
+            android:padding="8dp"
+            android:textColor="#00FF88"
+            android:textSize="9sp" />
+
+    </ScrollView>
+
+</LinearLayout>

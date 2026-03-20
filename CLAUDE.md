@@ -109,6 +109,22 @@ app/
 
 ---
 
+## Issues / Todo futur
+
+### UX
+- [ ] **Bouton fermeture bulle** : petite croix (×) en bas de l'écran quand la bulle est active,
+  pour stopper le service sans repasser par MainActivity.
+
+### Fonctionnalités
+- [ ] **JMdict local (option B dictionnaire)** : bundler le SQLite JMdict (~170MB) comme asset Room
+  et en faire une option activable dans les Settings (toggle "Mode offline / dictionnaire local").
+  Pour le MVP, Jisho API est utilisé à la place.
+
+### Technique
+- [ ] Ajouter `gradlew` dans le PATH de l'env (ou un script `run.sh`) pour simplifier le workflow dev.
+
+---
+
 ## Conventions de code
 - Kotlin idiomatique, commentaires en français
 - Pas de magie cachée : chaque classe fait une chose
