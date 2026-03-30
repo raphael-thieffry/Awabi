@@ -25,13 +25,13 @@ The extracted text is scanned for Japanese words using a **longest-match greedy 
 - French translation (best-effort)
 - JLPT level (N1–N5)
 
-### Adaptive display (SRS)
+### Adaptive display
 Words are displayed with friction that grows the more you've seen them:
 - **First time** — kanji + furigana + translation, highlighted in green
 - **Seen 1–3×** — furigana hidden, tap to reveal
 - **Seen 4×+** — everything hidden ("do you know this one?")
 
-This is a simplified SM-2 spaced repetition mechanic built directly into the overlay.
+The app tracks how many times you've tapped each word and sorts the panel so the least-seen words appear first. Actual spaced repetition scheduling happens in Anki once you export.
 
 ### Grammar analysis (LLM)
 Tap **✦ Analyser** in the panel to send the captured text to a language model. It returns:
