@@ -26,12 +26,9 @@ The extracted text is scanned for Japanese words using a **longest-match greedy 
 - JLPT level (N1–N5)
 
 ### Adaptive display
-Words are displayed with friction that grows the more you've seen them:
-- **First time** — kanji + furigana + translation, highlighted in green
-- **Seen 1–3×** — furigana hidden, tap to reveal
-- **Seen 4×+** — everything hidden ("do you know this one?")
+Each word card shows kanji, reading, or definition — tap to cycle through the three views. Words are sorted so the least-tapped ones appear first.
 
-The app tracks how many times you've tapped each word and sorts the panel so the least-seen words appear first. Actual spaced repetition scheduling happens in Anki once you export.
+Card color shifts from **blue** (never seen) to **dark grey** (frequently seen) based on your tap count relative to the rest of the current scan. A small badge shows the tap count. Actual spaced repetition scheduling happens in Anki once you export.
 
 ### Grammar analysis (LLM)
 Tap **✦ Analyser** in the panel to send the captured text to a language model. It returns:
