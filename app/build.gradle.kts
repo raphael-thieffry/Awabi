@@ -1,3 +1,10 @@
+import java.util.Properties
+
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) load(f.inputStream())
+}
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -22,6 +29,7 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -87,10 +95,7 @@ dependencies {
     // ML Kit OCR japonais (modèle bundlé, offline)
     implementation("com.google.mlkit:text-recognition-japanese:16.0.1")
 
-    // Kuromoji — tokenisation japonaise
-    implementation("com.atilika.kuromoji:kuromoji-ipadic:0.9.0")
-
-    // Retrofit + OkHttp — appels réseau (Jisho, MyMemory)
+// Retrofit + OkHttp — appels réseau (Jisho, MyMemory)
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")

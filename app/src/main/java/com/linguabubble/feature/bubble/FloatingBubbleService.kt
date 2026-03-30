@@ -34,10 +34,14 @@ import com.linguabubble.BuildConfig
 import com.linguabubble.MainActivity
 import com.linguabubble.R
 import com.linguabubble.accessibility.LinguaAccessibilityService
+import com.linguabubble.core.data.local.WordProgressDao
 import com.linguabubble.core.util.DebugStore
-import com.linguabubble.core.util.KuromojiTokenizer
+import com.linguabubble.core.util.DictionaryScanner
+import com.linguabubble.core.domain.model.WordEntry
 import com.linguabubble.databinding.OverlayBubbleBinding
+import com.linguabubble.databinding.OverlayCloseZoneBinding
 import com.linguabubble.databinding.OverlayPanelBinding
+import com.linguabubble.feature.anki.CurrentDeckRepository
 import com.linguabubble.ocr.OcrProcessor
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -55,16 +59,16 @@ import javax.inject.Inject
  * Service en avant-plan qui affiche la bulle flottante.
  *
  * Sprint 1 : bulle draggable + panneau placeholder au tap.
- * Sprint 2 : tap → capture texte AccessibilityService → tokenisation Kuromoji
+ * Sprint 2 : tap → capture texte AccessibilityService → DictionaryScanner (longest-match JMdict)
  *             → lookup Jisho (WordRepository) → affichage des mots dans le panneau.
  * Sprint 3 : OCR réel via MediaProjection + ML Kit japonais (on-device).
  *             L'AccessibilityService reste en fallback si l'OCR échoue.
+ *             Ajout deck courant (appui long), ordre par clickCount, × fermer, bouton MainActivity.
  */
 @AndroidEntryPoint
 class FloatingBubbleService : Service() {
 
     companion object {
-        /** Permet à MainActivity de savoir si le service tourne. */
         var isRunning = false
             private set
 
@@ -78,8 +82,11 @@ class FloatingBubbleService : Service() {
     // ─── Injection Hilt ───────────────────────────────────────────────────────
 
     @Inject lateinit var wordRepository: WordRepository
-    @Inject lateinit var kuromojiTokenizer: KuromojiTokenizer
+    @Inject lateinit var dictionaryScanner: DictionaryScanner
     @Inject lateinit var ocrProcessor: OcrProcessor
+    @Inject lateinit var wordProgressDao: WordProgressDao
+    @Inject lateinit var currentDeckRepository: CurrentDeckRepository
+    @Inject lateinit var analyzeGrammarUseCase: com.linguabubble.core.domain.usecase.AnalyzeGrammarUseCase
 
     // ─── MediaProjection ──────────────────────────────────────────────────────
 
@@ -90,10 +97,13 @@ class FloatingBubbleService : Service() {
     private val serviceJob   = SupervisorJob()
     private val serviceScope = CoroutineScope(Dispatchers.Main + serviceJob)
 
-    private val _words = MutableStateFlow<List<com.linguabubble.core.domain.model.WordEntry>>(emptyList())
-    val words: StateFlow<List<com.linguabubble.core.domain.model.WordEntry>> = _words
+    private val _words = MutableStateFlow<List<WordEntry>>(emptyList())
+    val words: StateFlow<List<WordEntry>> = _words
 
     private val _isLoading = MutableStateFlow(false)
+
+    /** Dernier texte brut OCR — envoyé au LLM si l'utilisateur tape "Analyser". */
+    private var lastRawText: String = ""
 
     // ─── UI ───────────────────────────────────────────────────────────────────
 
@@ -104,6 +114,9 @@ class FloatingBubbleService : Service() {
     private var panelBinding: OverlayPanelBinding? = null
     private var panelParams:  WindowManager.LayoutParams? = null
     private var isPanelVisible = false
+
+    private var closeZoneBinding: OverlayCloseZoneBinding? = null
+    private var closeZoneParams:  WindowManager.LayoutParams? = null
 
     private var wordAdapter: WordAdapter? = null
 
@@ -116,11 +129,11 @@ class FloatingBubbleService : Service() {
     private var velocityTracker: VelocityTracker? = null
     private var physicsAnimator: ValueAnimator?   = null
 
-    // Spring drag : cible du doigt, la bulle rattrape progressivement
+    // Spring drag
     private var fingerTargetX      = 0f
     private var fingerTargetY      = 0f
     private var springFrameCallback: Choreographer.FrameCallback? = null
-    private val SPRING_FACTOR      = 0.22f  // ~22 % de rattrapage par frame à 60fps
+    private val SPRING_FACTOR      = 0.22f
 
     // ─── Lifecycle ────────────────────────────────────────────────────────────
 
@@ -130,7 +143,6 @@ class FloatingBubbleService : Service() {
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         createNotificationChannel()
 
-        // Sur API 29+, déclarer les types de service (requis par Android 14 pour mediaProjection)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(
                 NOTIFICATION_ID, buildNotification(),
@@ -156,18 +168,22 @@ class FloatingBubbleService : Service() {
         if (resultCode == android.app.Activity.RESULT_OK && data != null) {
             val projectionManager = getSystemService(MediaProjectionManager::class.java)
             mediaProjection = projectionManager.getMediaProjection(resultCode, data)
-            // Nettoyer proprement si la projection est révoquée par l'OS
             mediaProjection?.registerCallback(object : MediaProjection.Callback() {
                 override fun onStop() {
                     ocrProcessor.stop()
                     mediaProjection = null
                 }
             }, Handler(Looper.getMainLooper()))
-            // Démarrer le VirtualDisplay une seule fois — il restera actif tout le service
             ocrProcessor.start(mediaProjection!!)
         }
 
         return START_NOT_STICKY
+    }
+
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        // Redimensionne le VirtualDisplay sans recréer la MediaProjection (interdit par Android)
+        ocrProcessor.onConfigurationChanged()
     }
 
     override fun onDestroy() {
@@ -179,16 +195,14 @@ class FloatingBubbleService : Service() {
         mediaProjection = null
         if (::bubbleBinding.isInitialized) windowManager.removeView(bubbleBinding.root)
         panelBinding?.let { windowManager.removeView(it.root) }
+        closeZoneBinding?.let { runCatching { windowManager.removeView(it.root) } }
     }
 
     // ─── Création de la bulle ─────────────────────────────────────────────────
 
-    private val themedContext by lazy { ContextThemeWrapper(this, R.style.Theme_LinguaBubble_Overlay) }
+    private val themedContext by lazy { ContextThemeWrapper(this, R.style.Theme_Awabi_Overlay) }
 
-    /** Taille de la bulle en pixels (44dp). */
     private val bubbleSizePx get() = (44 * resources.displayMetrics.density + 0.5f).toInt()
-
-    /** Marge minimale par rapport aux bords de l'écran (couvre la zone gesture navigation ~20dp). */
     private val edgePaddingPx get() = (20 * resources.displayMetrics.density + 0.5f).toInt()
 
     private fun createBubble() {
@@ -234,11 +248,12 @@ class FloatingBubbleService : Service() {
                     val dy = (event.rawY - touchStartY).toInt()
                     if (!isDragging && (abs(dx) > touchSlop || abs(dy) > touchSlop)) {
                         isDragging = true
+                        showCloseZone()
                     }
                     if (isDragging) {
-                        // Le Choreographer déplace la bulle vers ces coordonnées en douceur
                         fingerTargetX = (dragStartX + dx).toFloat()
                         fingerTargetY = (dragStartY + dy).toFloat()
+                        updateCloseZoneHighlight()
                     }
                     true
                 }
@@ -250,7 +265,13 @@ class FloatingBubbleService : Service() {
                     val vy = velocityTracker?.yVelocity ?: 0f
                     velocityTracker?.recycle()
                     velocityTracker = null
-                    if (!isDragging) onBubbleTapped() else flingWithPhysics(vx, vy)
+                    if (!isDragging) {
+                        onBubbleTapped()
+                    } else {
+                        val droppedOnClose = isOverCloseZone()
+                        hideCloseZone()
+                        if (droppedOnClose) stopSelf() else flingWithPhysics(vx, vy)
+                    }
                     true
                 }
                 else -> false
@@ -260,11 +281,6 @@ class FloatingBubbleService : Service() {
 
     // ─── Spring drag (Choreographer) ──────────────────────────────────────────
 
-    /**
-     * Démarre une boucle Choreographer qui rapproche la bulle de [fingerTargetX/Y]
-     * à chaque frame. Le facteur SPRING_FACTOR (~22 %) donne un léger retard naturel
-     * sans être trop visqueux.
-     */
     private fun startSpringDrag() {
         stopSpringDrag()
         val cb = object : Choreographer.FrameCallback {
@@ -299,14 +315,59 @@ class FloatingBubbleService : Service() {
         springFrameCallback = null
     }
 
+    // ─── Drop zone "fermer" ───────────────────────────────────────────────────
+
+    /** Hauteur de la zone de drop en pixels. */
+    private val closeZoneHeightPx get() = (72 * resources.displayMetrics.density + 0.5f).toInt()
+
+    private fun showCloseZone() {
+        if (closeZoneBinding != null) {
+            closeZoneBinding!!.root.visibility = View.VISIBLE
+            return
+        }
+        closeZoneBinding = OverlayCloseZoneBinding.inflate(LayoutInflater.from(themedContext))
+        val screenHeight = windowManager.currentWindowMetrics.bounds.height()
+        val screenWidth  = windowManager.currentWindowMetrics.bounds.width()
+
+        closeZoneParams = WindowManager.LayoutParams(
+            screenWidth,
+            closeZoneHeightPx,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            x = 0
+            y = screenHeight - closeZoneHeightPx
+        }
+        windowManager.addView(closeZoneBinding!!.root, closeZoneParams!!)
+    }
+
+    private fun hideCloseZone() {
+        closeZoneBinding?.root?.visibility = View.GONE
+        closeZoneBinding?.closeTarget?.setBackgroundResource(R.drawable.bg_close_zone_target)
+    }
+
+    /** Met en surbrillance la cible si la bulle est au-dessus de la zone. */
+    private fun updateCloseZoneHighlight() {
+        val over = isOverCloseZone()
+        closeZoneBinding?.closeTarget?.setBackgroundResource(
+            if (over) R.drawable.bg_close_zone_target_active
+            else      R.drawable.bg_close_zone_target
+        )
+    }
+
+    /** Retourne true si le centre bas de la bulle est dans la zone de fermeture. */
+    private fun isOverCloseZone(): Boolean {
+        val screenHeight  = windowManager.currentWindowMetrics.bounds.height()
+        val zoneTop       = screenHeight - closeZoneHeightPx
+        val bubbleBottom  = bubbleParams.y + (bubbleBinding.root.height.takeIf { it > 0 } ?: bubbleSizePx)
+        return bubbleBottom >= zoneTop
+    }
+
     // ─── Physique 2D + snap magnétique ───────────────────────────────────────
 
-    /**
-     * Lance la bulle avec la vélocité du doigt en px/s.
-     * Friction exponentielle (vitesse divisée par ~2 toutes les 200 ms).
-     * Rebond amorti sur les bords haut / bas.
-     * Quand la vitesse est négligeable → snap au bord gauche ou droit.
-     */
     private fun flingWithPhysics(vx: Float, vy: Float) {
         val screenWidth  = windowManager.currentWindowMetrics.bounds.width()
         val screenHeight = windowManager.currentWindowMetrics.bounds.height()
@@ -330,7 +391,6 @@ class FloatingBubbleService : Service() {
                 val dt  = ((now - lastNanos) / 1_000_000_000f).coerceAtMost(0.05f)
                 lastNanos = now
 
-                // Friction : k=3.5 → vitesse × 0.5 toutes les ~200 ms
                 val decay = exp(-3.5f * dt)
                 velX *= decay
                 velY *= decay
@@ -338,7 +398,6 @@ class FloatingBubbleService : Service() {
                 posX += velX * dt
                 posY += velY * dt
 
-                // Rebond sur les bords haut / bas (amortissement 40 %), avec marge gesture
                 if (posY < ep)    { posY = ep;    velY =  abs(velY) * 0.4f }
                 if (posY > maxY)  { posY = maxY;  velY = -abs(velY) * 0.4f }
                 posX = posX.coerceIn(ep, maxX)
@@ -352,7 +411,6 @@ class FloatingBubbleService : Service() {
                     windowManager.updateViewLayout(panelBinding!!.root, panelParams!!)
                 }
 
-                // Vitesse négligeable → snap final au bord le plus proche
                 if (abs(velX) < 60f && abs(velY) < 60f) {
                     anim.cancel()
                     snapToEdge(velX)
@@ -362,10 +420,6 @@ class FloatingBubbleService : Service() {
         }
     }
 
-    /**
-     * Anime la bulle vers le bord gauche ou droit.
-     * Si la vélocité dépasse le seuil, elle choisit le bord ; sinon, c'est la position.
-     */
     private fun snapToEdge(velocityX: Float = 0f) {
         val screenWidth = windowManager.currentWindowMetrics.bounds.width()
         val bubbleWidth = bubbleBinding.root.width.takeIf { it > 0 } ?: bubbleSizePx
@@ -377,7 +431,7 @@ class FloatingBubbleService : Service() {
             velocityX < -velocityThreshold -> false
             else -> bubbleParams.x + bubbleWidth / 2 >= screenWidth / 2
         }
-        val targetX = if (snapRight) screenWidth - bubbleWidth - ep else ep
+        val targetX  = if (snapRight) screenWidth - bubbleWidth - ep else ep
         val duration = if (abs(velocityX) > velocityThreshold) 150L else 250L
 
         physicsAnimator = ValueAnimator.ofInt(bubbleParams.x, targetX).apply {
@@ -408,7 +462,6 @@ class FloatingBubbleService : Service() {
         }
     }
 
-    /** Assombrissement rapide au tap (sans squish ni overshoot). */
     private fun animateBubbleTap() {
         val v = bubbleBinding.ivBubble
         v.animate().cancel()
@@ -427,10 +480,10 @@ class FloatingBubbleService : Service() {
 
     /**
      * Pipeline d'analyse :
-     *  1. Masque l'overlay (pour ne pas l'inclure dans le screenshot OCR)
-     *  2. Capture l'écran via MediaProjection → ML Kit OCR japonais
-     *  3. Fallback sur AccessibilityService si l'OCR échoue ou n'est pas disponible
-     *  4. Kuromoji tokenisation → lookup Jisho → mise à jour de l'UI
+     *  1. Masque l'overlay
+     *  2. OCR MediaProjection → ML Kit japonais
+     *  3. Fallback AccessibilityService
+     *  4. DictionaryScanner (longest-match JMdict) → lookup → tri par clickCount ASC
      */
     private fun captureAndAnalyze() {
         serviceScope.launch {
@@ -438,10 +491,9 @@ class FloatingBubbleService : Service() {
             _isLoading.value = true
             if (BuildConfig.DEBUG) DebugStore.reset()
 
-            // Masquer l'overlay pour qu'il n'apparaisse pas dans le screenshot
             bubbleBinding.root.alpha  = 0f
             panelBinding?.root?.alpha = 0f
-            delay(150) // laisser le temps au WindowManager de dessiner le frame suivant
+            delay(150)
 
             try {
                 val text = withContext(Dispatchers.IO) {
@@ -450,13 +502,16 @@ class FloatingBubbleService : Service() {
                     else LinguaAccessibilityService.instance?.extractVisibleText().orEmpty()
                 }
                 if (BuildConfig.DEBUG) DebugStore.rawText = text
+                lastRawText = text
                 if (text.isBlank()) { _words.value = emptyList(); return@launch }
 
-                val tokens = withContext(Dispatchers.IO) { kuromojiTokenizer.tokenize(text) }
+                val tokens = withContext(Dispatchers.IO) { dictionaryScanner.scan(text) }
                 if (BuildConfig.DEBUG) DebugStore.tokens = tokens
                 if (tokens.isEmpty()) { _words.value = emptyList(); return@launch }
 
-                _words.value = withContext(Dispatchers.IO) { wordRepository.lookupWords(tokens) }
+                val raw = withContext(Dispatchers.IO) { wordRepository.lookupWords(tokens) }
+                // Mots jamais cliqués en premier, plus cliqués à la fin
+                _words.value = raw.sortedBy { it.clickCount }
             } catch (e: Exception) {
                 _words.value = emptyList()
             } finally {
@@ -464,6 +519,26 @@ class FloatingBubbleService : Service() {
                 panelBinding?.root?.alpha = 1f
                 _isLoading.value = false
             }
+        }
+    }
+
+    // ─── Gestion du clic sur un mot (incrémente clickCount + re-tri) ──────────
+
+    private fun onWordClicked(word: WordEntry) {
+        // Incrémente en DB uniquement — le re-tri n'a lieu qu'à la prochaine capture.
+        // L'adapter gère le badge/couleur localement sans re-trier la liste.
+        serviceScope.launch {
+            withContext(Dispatchers.IO) {
+                wordProgressDao.incrementClickCount(word.kanji)
+            }
+        }
+    }
+
+    // ─── Gestion de l'appui long (ajout au deck) ──────────────────────────────
+
+    private fun onWordLongPressed(word: WordEntry) {
+        serviceScope.launch {
+            currentDeckRepository.add(word)
         }
     }
 
@@ -487,11 +562,25 @@ class FloatingBubbleService : Service() {
                 y = bubbleParams.y + bubbleSizePx + 8
             }
 
-            wordAdapter = WordAdapter()
+            wordAdapter = WordAdapter(
+                onWordClicked      = { word -> onWordClicked(word) },
+                onWordLongPressed  = { word -> onWordLongPressed(word) }
+            )
             panelBinding!!.rvWords.apply {
                 layoutManager = LinearLayoutManager(themedContext, RecyclerView.HORIZONTAL, false)
                 adapter        = wordAdapter
             }
+
+            // Bouton ouvrir MainActivity
+            panelBinding!!.btnOpenMain.setOnClickListener {
+                val intent = Intent(this@FloatingBubbleService, MainActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+                }
+                startActivity(intent)
+            }
+
+            // Bouton Analyser — appel LLM sur le dernier texte OCR capturé
+            panelBinding!!.btnAnalyze.setOnClickListener { triggerGrammarAnalysis() }
 
             if (BuildConfig.DEBUG) {
                 panelBinding!!.btnDebug.visibility = View.VISIBLE
@@ -504,9 +593,9 @@ class FloatingBubbleService : Service() {
             }
 
             observeWords()
+            observeDeckCount()
             windowManager.addView(panelBinding!!.root, panelParams!!)
 
-            // Remettre la bulle au-dessus du panneau (Z-order = dernier ajouté = au-dessus)
             windowManager.removeView(bubbleBinding.root)
             windowManager.addView(bubbleBinding.root, bubbleParams)
         } else {
@@ -536,11 +625,98 @@ class FloatingBubbleService : Service() {
         }
     }
 
+    private fun observeDeckCount() {
+        serviceScope.launch {
+            currentDeckRepository.count.collect { count ->
+                val tv = panelBinding?.tvDeckCount ?: return@collect
+                if (count > 0) {
+                    tv.text = "$count mot${if (count > 1) "s" else ""} dans le deck"
+                    tv.visibility = View.VISIBLE
+                } else {
+                    tv.visibility = View.GONE
+                }
+            }
+        }
+    }
+
+    // ─── Analyse grammaticale LLM ──────────────────────────────────────────────
+
+    private fun triggerGrammarAnalysis() {
+        val panel = panelBinding ?: return
+
+        // Réinitialiser l'état
+        panel.layoutGrammar.visibility = View.VISIBLE
+        panel.progressGrammar.visibility = View.VISIBLE
+        panel.tvMainSentence.visibility = View.GONE
+        panel.scrollGrammar.visibility = View.GONE
+        panel.btnToggleCorrected.visibility = View.GONE
+        panel.tvCorrected.visibility = View.GONE
+
+        if (lastRawText.isBlank()) {
+            panel.progressGrammar.visibility = View.GONE
+            panel.tvMainSentence.visibility = View.VISIBLE
+            panel.tvMainSentence.text = "Lance d'abord une capture (tap sur la bulle)."
+            return
+        }
+
+        serviceScope.launch {
+            try {
+                val result = analyzeGrammarUseCase.analyze(lastRawText)
+
+                panel.progressGrammar.visibility = View.GONE
+
+                // Phrase principale — gras, plus grande
+                panel.tvMainSentence.text = result.main
+                panel.tvMainSentence.visibility = View.VISIBLE
+
+                // Analyse grammaticale — markdown simple
+                panel.tvGrammar.text = renderMarkdown(result.grammar)
+                panel.scrollGrammar.visibility = View.VISIBLE
+
+                // Traduction FR
+                panel.tvTranslation.text = result.translation
+                panel.tvTranslation.visibility = View.VISIBLE
+
+                // Texte corrigé — caché, toggle
+                panel.btnToggleCorrected.visibility = View.VISIBLE
+                panel.tvCorrected.text = result.corrected
+                var correctedVisible = false
+                panel.btnToggleCorrected.setOnClickListener {
+                    correctedVisible = !correctedVisible
+                    panel.tvCorrected.visibility = if (correctedVisible) View.VISIBLE else View.GONE
+                    panel.btnToggleCorrected.text = if (correctedVisible) "▼ Texte corrigé OCR" else "▶ Texte corrigé OCR"
+                }
+
+            } catch (e: Exception) {
+                panel.progressGrammar.visibility = View.GONE
+                panel.tvMainSentence.text = "Erreur : ${e.message}"
+                panel.tvMainSentence.visibility = View.VISIBLE
+            }
+        }
+    }
+
+    /** Convertit **gras** et *italique* en Spannable via Html. */
+    private fun renderMarkdown(md: String): android.text.Spanned {
+        val html = md
+            .replace(Regex("\\*\\*(.+?)\\*\\*"), "<b>$1</b>")
+            .replace(Regex("\\*(.+?)\\*"), "<i>$1</i>")
+            .replace(Regex("^[-•] (.+)$", RegexOption.MULTILINE), "• $1")
+            .replace("\n", "<br>")
+        return android.text.Html.fromHtml(html, android.text.Html.FROM_HTML_MODE_COMPACT)
+    }
+
     private fun hidePanel() {
         panelBinding?.root?.visibility = View.GONE
-        // Réinitialiser la section debug pour la prochaine ouverture
         panelBinding?.scrollDebug?.visibility = View.GONE
         panelBinding?.tvDebug?.text = ""
+        panelBinding?.layoutGrammar?.visibility = View.GONE
+        panelBinding?.tvMainSentence?.text = ""
+        panelBinding?.tvGrammar?.text = ""
+        panelBinding?.tvTranslation?.text = ""
+        panelBinding?.tvTranslation?.visibility = View.GONE
+        panelBinding?.tvCorrected?.text = ""
+        panelBinding?.btnToggleCorrected?.visibility = View.GONE
+        panelBinding?.tvCorrected?.visibility = View.GONE
         isPanelVisible = false
     }
 
@@ -549,7 +725,7 @@ class FloatingBubbleService : Service() {
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "LinguaBubble",
+            "Awabi",
             NotificationManager.IMPORTANCE_LOW
         ).apply {
             description = "Service de bulle flottante pour l'apprentissage du japonais"
@@ -564,7 +740,7 @@ class FloatingBubbleService : Service() {
             PendingIntent.FLAG_IMMUTABLE
         )
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("LinguaBubble")
+            .setContentTitle("Awabi")
             .setContentText("Bulle active — tapez pour analyser l'écran")
             .setSmallIcon(android.R.drawable.ic_menu_compass)
             .setContentIntent(pendingIntent)

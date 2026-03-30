@@ -34,7 +34,7 @@ object DebugStore {
         sb.appendLine("══ TEXTE BRUT (${rawText.length} chars) ══")
         sb.appendLine(rawText.take(300).ifBlank { "(vide)" })
         sb.appendLine()
-        sb.appendLine("══ TOKENS KUROMOJI (${tokens.size}) ══")
+        sb.appendLine("══ TOKENS JMDICT (${tokens.size}) ══")
         sb.appendLine(tokens.joinToString(", ").ifBlank { "(aucun)" })
         sb.appendLine()
         sb.appendLine("══ RÉPONSES JISHO (${_jishoLog.size} échantillons) ══")

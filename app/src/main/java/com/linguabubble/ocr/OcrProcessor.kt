@@ -59,12 +59,33 @@ class OcrProcessor @Inject constructor(
         imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 3)
 
         virtualDisplay = mediaProjection.createVirtualDisplay(
-            "LinguaBubbleOcr",
+            "AwabiOcr",
             width, height, density,
             DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
             imageReader!!.surface,
             null, null
         )
+    }
+
+    /**
+     * Redimensionne le VirtualDisplay et l'ImageReader aux nouvelles dimensions de l'écran.
+     * À appeler lors d'un changement de configuration (rotation, pliage).
+     * N'appelle PAS createVirtualDisplay (interdit sur la même MediaProjection instance).
+     */
+    fun onConfigurationChanged() {
+        val vd = virtualDisplay ?: return
+        val bounds  = windowManager.currentWindowMetrics.bounds
+        val width   = bounds.width()
+        val height  = bounds.height()
+        val density = context.resources.displayMetrics.densityDpi
+
+        // Détacher la surface avant de fermer l'ancien ImageReader
+        vd.setSurface(null)
+        imageReader?.close()
+
+        imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 3)
+        vd.resize(width, height, density)
+        vd.setSurface(imageReader!!.surface)
     }
 
     /** Libère le VirtualDisplay et l'ImageReader. À appeler dans onDestroy. */
@@ -102,9 +123,10 @@ class OcrProcessor @Inject constructor(
     }
 
     private fun imageToBitmap(image: Image): Bitmap {
-        val bounds      = windowManager.currentWindowMetrics.bounds
-        val width       = bounds.width()
-        val height      = bounds.height()
+        // Utiliser les dimensions réelles de l'image, pas celles de windowManager
+        // (évite la corruption si la config a changé depuis la création du VirtualDisplay)
+        val width       = image.width
+        val height      = image.height
         val plane       = image.planes[0]
         val rowStride   = plane.rowStride
         val pixelStride = plane.pixelStride

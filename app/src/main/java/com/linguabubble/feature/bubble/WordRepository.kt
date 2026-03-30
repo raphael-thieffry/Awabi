@@ -119,7 +119,8 @@ class WordRepository @Inject constructor(
             definitionEn = definitionEn,
             definitionFr = "",
             jlptLevel    = jlptLevel,
-            seenCount    = seenCount
+            seenCount    = seenCount,
+            clickCount   = progress?.clickCount ?: 0
         )
     }
 }

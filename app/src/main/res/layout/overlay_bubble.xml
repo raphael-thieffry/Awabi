@@ -1,16 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Bulle flottante — kanji 泡 blanc sur fond noir -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content">
 
-    <ImageView
+    <TextView
         android:id="@+id/ivBubble"
         android:layout_width="44dp"
         android:layout_height="44dp"
         android:background="@drawable/bg_bubble"
         android:contentDescription="@string/bubble_description"
         android:elevation="8dp"
-        android:padding="10dp"
-        android:src="@drawable/ic_bubble" />
+        android:gravity="center"
+        android:text="泡"
+        android:textColor="#FFFFFF"
+        android:textSize="22sp"
+        android:textStyle="bold" />
 
 </FrameLayout>

@@ -1,10 +1,10 @@
 <resources>
-    <string name="app_name">LinguaBubble</string>
-    <string name="app_subtitle">Apprentissage du japonais</string>
+    <string name="app_name">Awabi</string>
+    <string name="app_subtitle">泡 — Collecte de vocabulaire japonais</string>
 
     <!-- AccessibilityService -->
-    <string name="accessibility_service_label">LinguaBubble</string>
-    <string name="accessibility_service_description">Permet à LinguaBubble de lire le contenu de l\'écran pour extraire et analyser le vocabulaire japonais.</string>
+    <string name="accessibility_service_label">Awabi</string>
+    <string name="accessibility_service_description">Permet à Awabi de lire le contenu de l\'écran pour extraire et analyser le vocabulaire japonais.</string>
 
     <!-- Permissions -->
     <string name="permission_overlay_title">Affichage par-dessus les autres apps</string>
@@ -18,9 +18,51 @@
     <string name="btn_stop_bubble">Arrêter la bulle</string>
 
     <!-- Bulle -->
-    <string name="bubble_description">Bulle LinguaBubble</string>
+    <string name="bubble_description">Bulle Awabi</string>
 
-    <!-- Panneau Sprint 1 -->
-    <string name="panel_sprint1_placeholder">Squelette Sprint 1 — bulle active ✓</string>
-    <string name="panel_sprint1_next">Sprint 2 : OCR + détection des mots japonais</string>
+    <!-- Deck courant -->
+    <string name="deck_title_empty">Deck courant</string>
+    <string name="deck_title">Deck courant (%d mot(s))</string>
+    <string name="deck_empty_hint">Aucun mot dans le deck.\nAppui long sur un mot dans la bulle pour l\'ajouter.</string>
+    <string name="btn_export">Exporter (.apkg)</string>
+
+    <!-- Export -->
+    <string name="export_dialog_title">Exporter %d mot(s)</string>
+    <string name="export_dialog_message">Le deck sera vidé après l\'export. Choisissez un nom :</string>
+    <string name="export_deck_name_hint">Nom du deck</string>
+    <string name="btn_export_confirm">Exporter et vider</string>
+    <string name="export_success">Exporté : %s (dans Téléchargements)</string>
+    <string name="export_error">Erreur lors de l\'export. Vérifiez les permissions de stockage.</string>
+
+    <!-- Gestion progress -->
+    <string name="btn_manage_progress">Gérer les compteurs de clics</string>
+    <string name="word_progress_title">Compteurs de clics</string>
+    <string name="word_progress_count">%1$d mot(s) — %2$d avec des clics</string>
+    <string name="btn_reset_all">Reset tout</string>
+    <string name="btn_reset_non_exported">Reset non-exportés</string>
+    <string name="search_word_hint">Rechercher un mot…</string>
+
+    <!-- Paramètres -->
+    <string name="settings_title">Paramètres</string>
+    <string name="settings_level_label">Ton niveau en japonais</string>
+    <string name="settings_desc_label">Présente-toi (optionnel)</string>
+    <string name="settings_desc_hint_long">Ex : J\'apprends depuis 1 an, je connais les kana, je lis des visual novels…</string>
+    <string name="settings_desc_hint">Description libre…</string>
+    <string name="settings_reading_label">Prononciation dans l\'analyse</string>
+    <string name="settings_api_key_label">Clef API</string>
+    <string name="settings_api_key_hint_long">Compatible : GitHub Models (github_pat_… / ghp_…), Google Gemini (AIza…), Anthropic Claude (sk-ant-…), OpenAI (sk-…)</string>
+    <string name="settings_api_key_hint">Colle ta clef ici…</string>
+    <string name="settings_api_key_test">Tester la connexion</string>
+    <string name="settings_save">Enregistrer</string>
+    <string name="action_settings">Paramètres</string>
+
+    <!-- Reset clicks -->
+    <string name="reset_all_title">Réinitialiser tous les compteurs</string>
+    <string name="reset_all_message">Remettre à zéro le compteur de clics de tous les mots ?</string>
+    <string name="btn_reset_confirm">Réinitialiser</string>
+    <string name="reset_all_done">Compteurs réinitialisés</string>
+    <string name="reset_non_exported_title">Reset non-exportés</string>
+    <string name="reset_non_exported_message">Remettre à zéro les compteurs des mots jamais exportés vers Anki ?</string>
+    <string name="reset_non_exported_done">Compteurs non-exportés réinitialisés</string>
+    <string name="reset_word_done">Compteur réinitialisé : %s</string>
 </resources>

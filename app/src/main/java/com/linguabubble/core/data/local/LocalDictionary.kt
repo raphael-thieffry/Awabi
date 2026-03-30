@@ -60,6 +60,26 @@ class LocalDictionary(private val context: Context) {
         return null
     }
 
+    /**
+     * Recherche en lot : retourne le sous-ensemble de [candidates] présents dans le dict.
+     * Appelle [ensureReady] automatiquement — sûr à appeler depuis un thread IO.
+     * Batché par tranche de 900 (limite SQLite = 999 paramètres).
+     */
+    fun batchLookup(candidates: Set<String>): Set<String> {
+        ensureReady()
+        val d = db ?: return emptySet()
+        val found = mutableSetOf<String>()
+        for (chunk in candidates.toList().chunked(900)) {
+            val ph   = chunk.joinToString(",") { "?" }
+            val args = chunk.toTypedArray()
+            d.rawQuery("SELECT kanji   FROM entries WHERE kanji   IN ($ph)", args)
+                .use { c -> while (c.moveToNext()) found.add(c.getString(0)) }
+            d.rawQuery("SELECT reading FROM entries WHERE reading IN ($ph)", args)
+                .use { c -> while (c.moveToNext()) found.add(c.getString(0)) }
+        }
+        return found
+    }
+
     fun close() {
         db?.close()
         db = null

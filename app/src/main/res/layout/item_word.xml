@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
     Chip horizontal pour un mot japonais.
-    Largeur adaptative au contenu, hauteur compacte.
-    Tap pour cycler : kanji → lecture → définition.
+    Tap court : cycle kanji → lecture → définition (incrémente clickCount).
+    Appui long : ajout au deck courant + coche verte temporaire.
+    Badge discret en coin supérieur droit : nb de taps (caché si 0).
 -->
 <com.google.android.material.card.MaterialCardView
     xmlns:android="http://schemas.android.com/apk/res/android"
@@ -109,6 +110,41 @@
                 android:textSize="10sp" />
 
         </LinearLayout>
+
+        <!-- Badge click count — coin supérieur droit, caché si 0 -->
+        <TextView
+            android:id="@+id/tvClickBadge"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_gravity="top|end"
+            android:layout_marginTop="3dp"
+            android:layout_marginEnd="3dp"
+            android:background="@drawable/bg_badge"
+            android:gravity="center"
+            android:textColor="#FFFFFF"
+            android:textSize="8sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <!-- Overlay coche verte — appui long → ajout deck -->
+        <FrameLayout
+            android:id="@+id/overlayAdded"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#CC1DB954"
+            android:gravity="center"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="✓"
+                android:textColor="#FFFFFF"
+                android:textSize="22sp"
+                android:textStyle="bold" />
+
+        </FrameLayout>
 
     </FrameLayout>
 

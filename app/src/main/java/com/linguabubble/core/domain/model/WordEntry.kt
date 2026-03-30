@@ -15,6 +15,8 @@ data class WordEntry(
     val definitionFr: String,
     /** Niveau JLPT ex : "jlpt-n3", ou vide si inconnu */
     val jlptLevel: String,
-    /** Nombre de fois que l'utilisateur a vu ce mot (issu de Room) */
-    val seenCount: Int = 0
+    /** Nombre d'apparitions dans les scans (friction SRS) */
+    val seenCount: Int = 0,
+    /** Nombre de taps utilisateur sur le chip (ordre dans le panneau + badge) */
+    val clickCount: Int = 0
 )
