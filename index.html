@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Awabi — Politique de confidentialité</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #58a6ff;
+      --green: #3fb950;
+      --red: #f85149;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      line-height: 1.7;
+      padding: 2rem 1rem;
+    }
+    .container { max-width: 760px; margin: 0 auto; }
+
+    header { text-align: center; padding: 3rem 0 2.5rem; }
+    .logo {
+      font-size: 2.8rem;
+      font-weight: 700;
+      letter-spacing: -1px;
+      color: var(--text);
+    }
+    .logo span { color: var(--accent); }
+    .tagline { color: var(--muted); margin-top: .5rem; font-size: 1rem; }
+
+    nav { display: flex; justify-content: center; gap: 1.5rem; margin-bottom: 3rem; flex-wrap: wrap; }
+    nav a {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: .9rem;
+      border-bottom: 1px solid transparent;
+      transition: border-color .15s;
+    }
+    nav a:hover { border-color: var(--accent); }
+
+    section { margin-bottom: 2.5rem; }
+    h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text);
+      border-bottom: 1px solid var(--border);
+      padding-bottom: .5rem;
+      margin-bottom: 1rem;
+    }
+    h3 { font-size: .95rem; font-weight: 600; color: var(--muted); margin: 1.2rem 0 .4rem; }
+    p { color: var(--muted); font-size: .95rem; margin-bottom: .75rem; }
+    ul { padding-left: 1.2rem; color: var(--muted); font-size: .95rem; }
+    li { margin-bottom: .4rem; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.2rem 1.4rem;
+      margin-bottom: 1rem;
+    }
+    .card-title {
+      font-weight: 600;
+      font-size: .95rem;
+      color: var(--text);
+      margin-bottom: .4rem;
+    }
+    .card p { margin: 0; }
+
+    .badge {
+      display: inline-block;
+      font-size: .75rem;
+      font-weight: 600;
+      padding: .15rem .55rem;
+      border-radius: 999px;
+      margin-right: .4rem;
+      vertical-align: middle;
+    }
+    .badge-local { background: #1f3a1f; color: var(--green); }
+    .badge-external { background: #3a1f1f; color: var(--red); }
+    .badge-optional { background: #1f2d3a; color: var(--accent); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .88rem;
+      margin-top: .5rem;
+    }
+    th {
+      text-align: left;
+      color: var(--muted);
+      font-weight: 500;
+      border-bottom: 1px solid var(--border);
+      padding: .5rem .75rem;
+    }
+    td {
+      padding: .5rem .75rem;
+      border-bottom: 1px solid var(--border);
+      color: var(--muted);
+      vertical-align: top;
+    }
+    td:first-child { color: var(--text); font-weight: 500; }
+    tr:last-child td { border-bottom: none; }
+
+    .highlight {
+      background: var(--surface);
+      border-left: 3px solid var(--accent);
+      padding: .9rem 1.2rem;
+      border-radius: 0 6px 6px 0;
+      margin: 1rem 0;
+    }
+    .highlight p { margin: 0; }
+
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: .8rem;
+      padding: 2rem 0 1rem;
+      border-top: 1px solid var(--border);
+      margin-top: 3rem;
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo">awa<span>bi</span></div>
+    <div class="tagline">Apprentissage du japonais par immersion</div>
+  </header>
+
+  <nav>
+    <a href="#privacy">Politique de confidentialité</a>
+    <a href="#permissions">Permissions</a>
+    <a href="#third-parties">Services tiers</a>
+    <a href="#contact">Contact</a>
+  </nav>
+
+  <!-- ── Résumé ── -->
+  <section>
+    <div class="highlight">
+      <p><strong>En résumé :</strong> Awabi ne collecte aucune donnée personnelle. Toutes vos données restent sur votre appareil. Aucune information n'est transmise à nos serveurs — nous n'en avons pas.</p>
+    </div>
+  </section>
+
+  <!-- ── Politique de confidentialité ── -->
+  <section id="privacy">
+    <h2>Politique de confidentialité</h2>
+    <p>Dernière mise à jour : avril 2025</p>
+    <p>
+      Awabi est une application Android d'apprentissage du japonais. Elle affiche une bulle flottante qui analyse le texte visible à l'écran, identifie du vocabulaire japonais, et permet d'exporter des cartes vers Anki.
+    </p>
+    <p>
+      Cette politique décrit précisément quelles données sont traitées, où elles transitent, et pourquoi.
+    </p>
+  </section>
+
+  <!-- ── Ce que l'app traite ── -->
+  <section>
+    <h2>Données traitées</h2>
+
+    <div class="card">
+      <div class="card-title"><span class="badge badge-local">LOCAL</span>Contenu de l'écran</div>
+      <p>Quand vous tapez sur la bulle, l'app capture une image de l'écran et en extrait le texte via ML Kit Text Recognition (traitement entièrement sur l'appareil, sans connexion réseau). Ce contenu n'est ni stocké ni transmis, sauf si vous utilisez la fonction d'analyse grammaticale (voir ci-dessous).</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="badge badge-local">LOCAL</span>Progression et vocabulaire</div>
+      <p>Les mots consultés, leur nombre d'apparitions, et votre deck Anki en cours sont stockés localement dans une base de données SQLite sur l'appareil. Ces données ne quittent jamais votre téléphone.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="badge badge-local">LOCAL</span>Clef API</div>
+      <p>Si vous configurez une clef API pour l'analyse grammaticale (OpenAI, Anthropic, etc.), celle-ci est stockée localement dans les préférences de l'application (SharedPreferences). Elle n'est jamais transmise à nos serveurs.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="badge badge-external">EXTERNE</span>Requêtes dictionnaire — Jisho.org</div>
+      <p>Lorsque l'app analyse l'écran et qu'un mot japonais n'est pas trouvé dans le dictionnaire local (JMdict, bundlé dans l'app), une requête est envoyée à l'API publique de <strong>jisho.org</strong>. Cette requête contient uniquement le mot japonais recherché (ex : <code>食べる</code>). Aucun identifiant personnel n'est transmis.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="badge badge-optional">OPTIONNEL</span>Analyse grammaticale — LLM tiers</div>
+      <p>
+        La fonction "Analyser" est <strong>entièrement optionnelle</strong> et requiert que vous fournissiez votre propre clef API. Quand vous l'activez manuellement, le texte brut extrait de l'écran est envoyé au fournisseur LLM que vous avez choisi :
+      </p>
+      <table>
+        <tr><th>Fournisseur</th><th>Politique de confidentialité</th></tr>
+        <tr><td>OpenAI</td><td><a href="https://openai.com/policies/privacy-policy" style="color:var(--accent)">openai.com/policies/privacy-policy</a></td></tr>
+        <tr><td>GitHub Models</td><td><a href="https://docs.github.com/en/site-policy/privacy-policies/github-privacy-statement" style="color:var(--accent)">docs.github.com/…/github-privacy-statement</a></td></tr>
+        <tr><td>Google Gemini</td><td><a href="https://policies.google.com/privacy" style="color:var(--accent)">policies.google.com/privacy</a></td></tr>
+        <tr><td>Anthropic</td><td><a href="https://www.anthropic.com/privacy" style="color:var(--accent)">anthropic.com/privacy</a></td></tr>
+      </table>
+      <p style="margin-top:.75rem">Les données envoyées à ces services sont régies par leurs propres politiques de confidentialité. Awabi n'a aucun contrôle sur leur traitement.</p>
+    </div>
+  </section>
+
+  <!-- ── Permissions ── -->
+  <section id="permissions">
+    <h2>Permissions utilisées</h2>
+
+    <table>
+      <tr>
+        <th>Permission</th>
+        <th>Utilisation</th>
+      </tr>
+      <tr>
+        <td>SYSTEM_ALERT_WINDOW</td>
+        <td>Affichage de la bulle flottante par-dessus les autres applications</td>
+      </tr>
+      <tr>
+        <td>FOREGROUND_SERVICE<br/>FOREGROUND_SERVICE_SPECIAL_USE</td>
+        <td>Maintien de la bulle active même quand l'app n'est pas au premier plan</td>
+      </tr>
+      <tr>
+        <td>FOREGROUND_SERVICE_MEDIA_PROJECTION</td>
+        <td>Capture d'écran via MediaProjection pour l'OCR. Demandée explicitement à l'utilisateur au moment de l'activation.</td>
+      </tr>
+      <tr>
+        <td>INTERNET</td>
+        <td>Requêtes vers Jisho.org (fallback dictionnaire) et vers le fournisseur LLM choisi (optionnel)</td>
+      </tr>
+      <tr>
+        <td>POST_NOTIFICATIONS</td>
+        <td>Notification persistante requise par Android pour les services en avant-plan</td>
+      </tr>
+      <tr>
+        <td>VIBRATE</td>
+        <td>Retour haptique lors de l'ajout d'un mot au deck (appui long)</td>
+      </tr>
+      <tr>
+        <td>Service d'accessibilité</td>
+        <td>Lecture du texte des vues Android visibles à l'écran (fallback si l'OCR n'est pas disponible). Utilisé uniquement pour extraire du texte en japonais, jamais pour lire des mots de passe ou des champs sensibles.</td>
+      </tr>
+    </table>
+
+    <div class="highlight" style="margin-top:1.2rem">
+      <p>Le service d'accessibilité et la capture d'écran sont utilisés <strong>uniquement pour extraire du vocabulaire japonais</strong> affiché à l'écran. Ces données sont traitées localement et ne sont jamais transmises sans action explicite de votre part.</p>
+    </div>
+  </section>
+
+  <!-- ── Ce que l'app ne fait PAS ── -->
+  <section>
+    <h2>Ce que l'application ne fait pas</h2>
+    <ul>
+      <li>Aucune collecte de données analytiques ou de télémétrie</li>
+      <li>Aucun tracking publicitaire</li>
+      <li>Aucun compte utilisateur, aucune inscription</li>
+      <li>Aucun envoi de données vers des serveurs Awabi (il n'en existe pas)</li>
+      <li>Aucun accès aux contacts, à la localisation, à la caméra, au microphone ou au stockage privé</li>
+      <li>Aucun partage de données avec des tiers, hormis les services optionnels listés ci-dessus</li>
+    </ul>
+  </section>
+
+  <!-- ── Services tiers ── -->
+  <section id="third-parties">
+    <h2>Services tiers</h2>
+
+    <div class="card">
+      <div class="card-title">ML Kit Text Recognition (Google)</div>
+      <p>Utilisé pour l'OCR japonais. Fonctionne entièrement sur l'appareil. Selon la documentation Google : <em>"On-device APIs process data locally, and because the data doesn't leave the device, these APIs don't require you to have connectivity or send any data to Google."</em></p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">JMdict</div>
+      <p>Dictionnaire japonais-anglais open source, intégré directement dans l'application sous forme de base SQLite. Aucune requête réseau. Licence : <a href="https://www.edrdg.org/edrdg/licence.html" style="color:var(--accent)">Creative Commons Attribution-ShareAlike 4.0</a>.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Jisho.org</div>
+      <p>API dictionnaire publique utilisée en fallback pour les mots absents du dictionnaire local. Seuls les tokens japonais recherchés sont transmis. Politique de confidentialité de Jisho : <a href="https://jisho.org/about" style="color:var(--accent)">jisho.org/about</a>.</p>
+    </div>
+  </section>
+
+  <!-- ── Vos droits ── -->
+  <section>
+    <h2>Vos données, vos droits</h2>
+    <p>
+      Toutes les données générées par Awabi (progression, deck courant) sont stockées localement sur votre appareil. Vous pouvez les supprimer à tout moment en désinstallant l'application ou en effaçant les données de l'app depuis les paramètres Android.
+    </p>
+    <p>
+      Awabi ne disposant d'aucun serveur ni compte utilisateur, il n'existe pas de données à demander, corriger ou supprimer de notre côté.
+    </p>
+  </section>
+
+  <!-- ── Contact ── -->
+  <section id="contact">
+    <h2>Contact</h2>
+    <p>
+      Pour toute question relative à cette politique de confidentialité, vous pouvez ouvrir une issue sur le dépôt GitHub du projet :
+      <a href="https://github.com/raphael-thieffry/Awabi/issues">github.com/raphael-thieffry/Awabi/issues</a>
+    </p>
+  </section>
+
+  <footer>
+    <p>Awabi &mdash; application open source</p>
+    <p style="margin-top:.4rem"><a href="https://github.com/raphael-thieffry/Awabi">github.com/raphael-thieffry/Awabi</a></p>
+  </footer>
+
+</div>
+</body>
+</html>
