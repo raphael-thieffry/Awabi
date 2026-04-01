@@ -45,7 +45,7 @@ class WordRepository @Inject constructor(
         val results  = mutableListOf<WordEntry>()
         var jishoReqs = 0
 
-        for (token in tokens.take(12)) {
+        for (token in tokens) {
             val entry = lookupLocal(token)
                 ?: run {
                     // Jisho : délai uniquement quand on l'utilise vraiment

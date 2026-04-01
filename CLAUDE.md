@@ -1,4 +1,4 @@
-# LinguaBubble — Contexte projet (Chef de projet : Claude)
+# LinguaBubble (Awabi) — Contexte projet
 
 ## Vision
 Application Android : bulle flottante (overlay Accessibility) qui lit le contenu de l'écran,
@@ -7,56 +7,75 @@ Focus : apprentissage japonais avec mécanique SRS et friction adaptative.
 
 ---
 
-## Décisions techniques validées
+## Stack
 
-### Stack
-- Langage : **Kotlin**
-- Min SDK : **API 35** (Android 15), target Android 16
+- Langage : **Kotlin** 2.1.20
+- Min SDK : **API 26**, target **API 35** (Android 15)
 - Architecture : **MVVM + Repository + UseCases**
-- DI : **Hilt**
-- BDD locale : **Room** (SQLite)
-- OCR : **ML Kit Text Recognition v2** (on-device, gratuit, supporte japonais)
-- Tokenisation JP : **Kuromoji** (lib Java, bundlable)
-- Dictionnaire local : **JMdict** (SQLite pré-compilé, ~170k entrées, open source)
-- Dictionnaire online : **Jisho.org** (API non-officielle, gratuite, sans clé)
-- Traduction : **MyMemory API** (gratuit, sans clé, cible FR)
-- Export Anki : **Générateur .apkg maison** (SQLite + ZIP)
-- HTTP : **Retrofit + OkHttp**
-- Tests : **JUnit 5 + Mockito + Espresso**
+- DI : **Hilt** 2.56.1
+- BDD locale : **Room** 2.6.1 (SQLite, v3 avec migrations)
+- OCR : **ML Kit Text Recognition v2** (on-device, gratuit, japonais)
+- Tokenisation JP : **DictionaryScanner** (longest-match greedy sur JMdict, max 8 chars, 12 tokens)
+- Dictionnaire local : **JMdict** (SQLite bundlé en asset, ~170k entrées) — actif par défaut
+- Dictionnaire online : **Jisho.org** (API non-officielle, gratuite, sans clé) — fallback réseau
+- Traduction : **EN systématique** (JMdict) ; **FR best-effort** (non implémenté — `definitionFr` toujours vide)
+- Analyse grammaticale : **LLM multi-provider** (clef utilisateur côté client)
+- Export Anki : **Générateur .apkg maison** (SQLite `collection.anki2` + ZIP)
+- HTTP : **Retrofit 2.11** + **OkHttp 4.12**
 
-### Règle : pas d'hébergement perso, tout gratuit
+### Règle : pas d'hébergement perso, tout gratuit (sauf LLM optionnel user-side)
 
 ---
 
-## Fonctionnalités validées
+## Fonctionnalités implémentées
 
 ### Bulle flottante
-- État réduit : icône draggable
-- État étendu : panneau de mots (tap sur la bulle)
-- Compteur visible : nombre de mots dans le deck courant
+- État réduit : icône draggable (spring drag + fling physics + snap magnétique bords)
+- État étendu : panneau horizontal de mots (tap sur la bulle)
+- Zone de fermeture : drop en bas de l'écran (45dp) pour stopper le service
+- Bouton "Ouvrir MainActivity" dans le panneau
 
 ### Capture écran (tap sur bulle)
-1. AccessibilityService → texte des vues Android
-2. MediaProjection → screenshot → ML Kit OCR
-3. Fusion + déduplication
-4. Kuromoji tokenisation → filtre noms/verbes/adjectifs
-5. Lookup JMdict local → fallback Jisho si réseau dispo
+1. Masque l'overlay 150ms
+2. MediaProjection → screenshot → ML Kit OCR japonais
+3. Fallback : AccessibilityService → texte des vues Android
+4. DictionaryScanner tokenisation (longest-match JMdict)
+5. Lookup JMdict local → fallback Jisho si réseau dispo (délai 120ms/token anti rate-limit)
+6. Tri par `clickCount` ASC (mots jamais cliqués en premier)
 
 ### Affichage des mots
-- Nouveaux mots : surbrillance verte, furigana + traduction + JLPT visibles
-- Vus 1-3x : furigana masquée, tap pour révéler
-- Vus 4x+ : tout masqué, friction active ("tu connais ce mot ?")
-- Algorithme SRS : SM-2 simplifié
+- Gradient couleur selon `clickCount` : 0 = bleu (nouveau), 1-4 = normal, 5+ = gris discret
+- Badge numérique `0-9+` sur chaque mot
+- Tap cycle : kanji → lecture → définition EN
+- Appui long : ajout au deck courant + coche verte 1.2s
+- SRS : **compteur de clics** (pas SM-2 — friction visuelle uniquement)
 
-### Anki — Flux validé
+### Analyse grammaticale (LLM)
+- Bouton "Analyser" dans le panneau → envoie le texte brut OCR au LLM
+- Réponse structurée en 4 sections : phrase principale, analyse grammaticale FR, traduction FR, correction
+- Retry automatique ×2 si parsing échoue
+- Clef API stockée en SharedPreferences, provider détecté automatiquement par préfixe
+
+**Providers LLM supportés** :
+| Provider | Préfixe clef | Modèle |
+|----------|-------------|--------|
+| GitHub Models | `github_pat_`, `ghp_` | gpt-4o-mini |
+| OpenAI | `sk-` | gpt-4o-mini |
+| Google Gemini | `AIza` | gemini-1.5-flash |
+| Anthropic | `sk-ant-` | claude-haiku-4-5-20251001 |
+
+### Anki — Flux
 - **Ajout** : appui long sur un mot → vibration haptique → ajout au "deck courant"
-- **Export** : bouton Export → confirmation ("X mots, exporter et vider ?")
-  → génère `/Downloads/LinguaBubble_[nom ou date].apkg`
-  → vide le deck courant dans l'app (repart à zéro)
-- **Nommage** : NE PAS supposer le nom du deck automatiquement (risque de doublons)
-  → laisser l'utilisateur nommer le deck à l'export
-- **Périodes** : courtes (3 jours à 1 semaine), chaque export = 1 deck Anki = 1 période
-- **Template carte** : kanji / lecture (furigana) / traduction FR / niveau JLPT
+- **Export** : bouton Export dans MainActivity → dialog nommage → génère `/Downloads/<nom>_<timestamp>.apkg`
+  → marque les mots comme exportés (`wasExported = true`) → vide le deck courant
+- **Nommage** : utilisateur nomme le deck à l'export (pas de nom automatique — risque de doublons)
+- **Template carte** : Kanji / Lecture / Traduction EN / Traduction FR (vide si non dispo) / JLPT
+
+### Settings
+- Clef API LLM (avec bouton "Test" et détection provider)
+- Niveau JLPT (Débutant / Intermédiaire / Avancé / Expert)
+- Mode lecture : Hiragana ↔ Romaji
+- Description personnelle (contexte injecté dans le prompt LLM)
 
 ### Langues
 - V1 : japonais uniquement
@@ -64,64 +83,72 @@ Focus : apprentissage japonais avec mécanique SRS et friction adaptative.
 
 ---
 
-## Décisions finales (traduction + lecture)
-- Traduction : **EN systématique** (JMdict), **FR si disponible** (MyMemory, best-effort)
-- Lecture : **option utilisateur** dans les settings — toggle furigana (hiragana) ↔ romaji
+## Structure projet réelle
 
----
-
-## Structure projet (cible)
 ```
-app/
-├── core/
-│   ├── data/
-│   │   ├── local/        # Room DAOs, entities (JMdict, WordProgress, CurrentDeck)
-│   │   └── remote/       # Retrofit (Jisho, MyMemory)
-│   ├── domain/
-│   │   ├── model/        # Word, WordProgress, ScreenSnapshot, DeckEntry
-│   │   └── usecase/      # CaptureScreenUseCase, LookupWordUseCase, ExportAnkiUseCase
-│   └── util/             # SRS (SM-2), Kuromoji wrapper, ApkgBuilder
+app/src/main/java/com/linguabubble/
+├── MainActivity.kt / MainViewModel.kt
+├── AwabiApp.kt
+├── accessibility/
+│   └── LinguaAccessibilityService.kt
 ├── feature/
-│   ├── bubble/           # FloatingBubbleService + UI overlay
-│   ├── worddetail/       # Détail d'un mot
-│   ├── review/           # Session de révision SRS
-│   ├── anki/             # AnkiExporter + CurrentDeckDao
-│   └── settings/         # Paramètres (mode offline, etc.)
-├── accessibility/         # LinguaAccessibilityService
-└── ocr/                  # ML Kit wrapper + MediaProjection
+│   ├── bubble/
+│   │   ├── FloatingBubbleService.kt  ← cœur (753 lignes)
+│   │   ├── BubbleTileService.kt      ← Quick Settings tile
+│   │   ├── TileActivity.kt           ← pont permission MediaProjection
+│   │   ├── WordRepository.kt
+│   │   └── WordAdapter.kt
+│   ├── anki/
+│   │   ├── CurrentDeckRepository.kt
+│   │   └── DeckEntryAdapter.kt
+│   ├── progress/
+│   │   ├── WordProgressActivity.kt / ViewModel / Adapter
+│   └── settings/
+│       └── SettingsActivity.kt
+├── core/
+│   ├── data/local/   # AppDatabase (v3), WordProgressEntity/Dao, DeckEntryEntity/Dao, LocalDictionary
+│   ├── data/remote/  # JishoApiService (Retrofit), GrammarApiService (OkHttp multi-provider)
+│   ├── domain/model/ # WordEntry
+│   └── domain/usecase/ # AnalyzeGrammarUseCase
+└── core/util/        # DictionaryScanner, ApkgBuilder, LlmProvider, NetworkModule, DatabaseModule, DebugStore
+└── ocr/
+    └── OcrProcessor.kt
 ```
 
 ---
 
-## Backlog MVP (ordre de priorité)
-1. Floating bubble draggable
-2. AccessibilityService (texte vues)
-3. ML Kit OCR + MediaProjection
-4. Kuromoji tokenisation
-5. JMdict local (Room) + schéma
-6. Lookup + affichage dans bulle
-7. SRS / WordProgress tracking
-8. Friction UI (masquage adaptatif)
-9. Export .apkg Anki (avec nommage manuel)
-10. Fallback Jisho API
-11. Tests unitaires (SRS, NLP, Anki)
-12. Mode offline complet
+## Backlog MVP
+
+- [x] Floating bubble draggable (spring + fling + snap)
+- [x] AccessibilityService (texte vues)
+- [x] ML Kit OCR + MediaProjection
+- [x] DictionaryScanner tokenisation (longest-match JMdict)
+- [x] JMdict local (asset SQLite bundlé)
+- [x] Lookup + affichage dans bulle (JMdict + Jisho fallback)
+- [x] SRS / WordProgress tracking (clickCount, seenCount, wasExported)
+- [x] Friction UI (gradient couleurs adaptatif)
+- [x] Export .apkg Anki (nommage manuel, SQLite collection.anki2)
+- [x] Fallback Jisho API
+- [x] LLM multi-provider (analyse grammaticale contextuelle)
+- [x] Quick Settings tile
+- [ ] Tests unitaires (SRS, NLP, Anki)
+- [ ] Traduction FR (MyMemory API — `definitionFr` non implémenté)
+- [ ] Mode offline complet (JMdict oui, Jisho non)
 
 ---
 
 ## Issues / Todo futur
 
-### UX
-- [ ] **Bouton fermeture bulle** : petite croix (×) en bas de l'écran quand la bulle est active,
-  pour stopper le service sans repasser par MainActivity.
+### Bugs connus
+- [ ] **`reading` absent de WordProgress** : `WordProgressEntity` ne stocke pas la lecture — l'activité progression affiche les mots sans furigana.
+- [ ] **`definitionFr` toujours vide** : MyMemory API non implémentée. Les cartes Anki exportent un champ FR vide.
+- [ ] **Parsing LLM fragile** : utilise `.indexOf()` sur les balises `[CORRECTED]` etc. — risque si le LLM répète les balises dans son texte.
 
-### Fonctionnalités
-- [ ] **JMdict local (option B dictionnaire)** : bundler le SQLite JMdict (~170MB) comme asset Room
-  et en faire une option activable dans les Settings (toggle "Mode offline / dictionnaire local").
-  Pour le MVP, Jisho API est utilisé à la place.
+### UX
+- [ ] Bouton fermeture propre (alternative à la close zone drop)
 
 ### Technique
-- [ ] Ajouter `gradlew` dans le PATH de l'env (ou un script `run.sh`) pour simplifier le workflow dev.
+- [ ] Ajouter `gradlew` dans le PATH de l'env (ou un script `run.sh`)
 
 ---
 
